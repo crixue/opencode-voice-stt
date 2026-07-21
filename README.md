@@ -261,6 +261,7 @@ For unauthenticated local endpoints (e.g. Ollama):
 - `chatTemplateKwargs` _(optional)_ - extra keyword arguments passed to the model's chat template (e.g. `{"enable_thinking": false}` for Qwen models to disable chain-of-thought)
 - `retries` _(optional)_ - number of retry attempts for transient LLM failures
 - `tmpDir` _(optional)_ - directory used for the temporary STT recording file (default `/tmp`)
+- `sttLanguage` _(optional)_ - spoken language passed to local `whisper-cli -l` (default `auto`; any whisper.cpp language code, e.g. `en`, `zh`). Can be changed at runtime via `/stt-language`
 
 ### Logging
 
@@ -327,17 +328,22 @@ If a path is not set, the built-in default prompt is used.
 
 ### Speech-to-text
 
-| Command       | Keybind    | Description                            |
-| ------------- | ---------- | -------------------------------------- |
-| `/stt-record` | `ctrl+r`   | Start/stop recording + transcribe      |
-| `/stt-submit` | `leader+r` | Stop recording, transcribe, and submit |
-| `/stt-stop`   |            | Cancel recording                       |
-| `/stt-model`  |            | Select whisper model                   |
-| `/stt-mic`    |            | Select microphone                      |
+| Command         | Keybind    | Description                            |
+| --------------- | ---------- | -------------------------------------- |
+| `/stt-record`   | `ctrl+r`   | Start/stop recording + transcribe      |
+| `/stt-submit`   | `leader+r` | Stop recording, transcribe, and submit |
+| `/stt-stop`     |            | Cancel recording                       |
+| `/stt-model`    |            | Select whisper model                   |
+| `/stt-language` |            | Select transcription language          |
+| `/stt-mic`      |            | Select microphone                      |
 
 `/stt-mic` lists CoreAudio input devices on macOS, and PulseAudio sources on
 Linux (via `pactl`, monitor sources excluded). On systems without a supported
 device listing, "System default" uses sox's default device (`sox -d`).
+
+`/stt-language` offers a curated list of common languages (plus auto-detect)
+and only affects local `whisper-cli` transcription, not the STT API. Languages
+outside the list can be set via the `sttLanguage` plugin option.
 
 ### Text-to-speech
 

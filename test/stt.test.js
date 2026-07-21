@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildOpenRouterTranscriptionRequest,
   buildRecordArgs,
+  buildWhisperArgs,
   isOpenRouterEndpoint,
   parsePactlSources,
   parsePactlSourcesShort,
@@ -69,4 +70,27 @@ test("builds sox record args per audio backend", () => {
   ]);
   assert.deepEqual(buildRecordArgs("coreaudio", null), ["-d"]);
   assert.deepEqual(buildRecordArgs("default", null), ["-d"]);
+});
+
+test("builds whisper-cli args with language", () => {
+  assert.deepEqual(buildWhisperArgs("/models/ggml.bin", "/tmp/a.wav", "zh"), [
+    "-m",
+    "/models/ggml.bin",
+    "-f",
+    "/tmp/a.wav",
+    "-l",
+    "zh",
+    "-np",
+    "-nt",
+  ]);
+  assert.deepEqual(buildWhisperArgs("/models/ggml.bin", "/tmp/a.wav", null), [
+    "-m",
+    "/models/ggml.bin",
+    "-f",
+    "/tmp/a.wav",
+    "-l",
+    "auto",
+    "-np",
+    "-nt",
+  ]);
 });
