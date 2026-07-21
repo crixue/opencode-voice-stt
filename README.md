@@ -56,17 +56,134 @@ rm -rf ~/.cache/opencode/packages/@renjfk/
 
 ### Speech-to-text
 
+The plugin uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp) via a
+`whisper-cli` binary and `sox` for microphone capture. Follow the subsection
+for your OS to install the binary and verify your microphone, then run the
+shared **Download model & smoke test** step at the end.
+
+#### macOS
+
+Install the `whisper-cpp` bottle (ships a `whisper-cli` with Metal enabled on
+Apple Silicon) and `sox`:
+
 ```bash
 brew install whisper-cpp sox
 ```
 
-Download a whisper model to `~/.local/share/whisper-cpp/`:
+Verify your microphone by recording a 3-second clip and playing it back. The
+first `sox -d` invocation triggers a macOS microphone permission prompt —
+grant it in **System Settings → Privacy & Security → Microphone**, then rerun.
+Remove the temp file once you've heard yourself clearly:
+
+```bash
+sox -d /tmp/mic-check.wav trim 0 3   # speak for 3 seconds
+play /tmp/mic-check.wav              # you should hear yourself
+rm /tmp/mic-check.wav                # delete after verification
+```
+
+#### Linux (including WSL2)
+
+Install `sox` with its PulseAudio driver (a separate package on Debian/Ubuntu),
+the PulseAudio tools so the plugin can enumerate input devices via `pactl`,
+and the build tools for whisper.cpp:
+
+```bash
+sudo apt install sox libsox-fmt-pulse pulseaudio-utils build-essential cmake
+```
+
+On WSL2, make sure [WSLg](https://learn.microsoft.com/windows/wsl/tutorials/gui-apps)
+is running — it bridges the Windows microphone into WSL as a PulseAudio source
+(typically named `RDPSource`), which you can then pick with `/stt-mic`.
+
+Verify your microphone by recording a 3-second clip and playing it back.
+Remove the temp file once you've heard yourself clearly; skip building
+whisper.cpp until this works, otherwise `/stt-mic` will have nothing to select:
+
+```bash
+sox -d /tmp/mic-check.wav trim 0 3   # speak for 3 seconds
+play /tmp/mic-check.wav              # you should hear yourself
+rm /tmp/mic-check.wav                # delete after verification
+```
+
+`whisper-cli` is not packaged for Linux, so build whisper.cpp from source.
+Pick **one** of the two builds below.
+
+**CPU build** — works on any machine, adequate for `tiny`/`base`/`small`
+models:
+
+```bash
+git clone https://github.com/ggml-org/whisper.cpp ~/opt/whisper.cpp
+cmake -B ~/opt/whisper.cpp/build -S ~/opt/whisper.cpp \
+  -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF
+cmake --build ~/opt/whisper.cpp/build -j --target whisper-cli
+sudo ln -sf ~/opt/whisper.cpp/build/bin/whisper-cli /usr/local/bin/whisper-cli
+```
+
+**CUDA build** — NVIDIA GPU, ~100× faster encode for `medium`/`large` models.
+Check your GPU with `nvidia-smi` and your toolkit with `nvcc --version`, then
+pick the arch code from the table:
+
+| GPU family        | Arch      | `CMAKE_CUDA_ARCHITECTURES` | Min. CUDA |
+|-------------------|-----------|----------------------------|-----------|
+| RTX 20 / T4       | Turing    | `75`                       | 10.0      |
+| RTX 30 / A100     | Ampere    | `86`                       | 11.0      |
+| RTX 40 / L40      | Ada       | `89`                       | 11.8      |
+| H100              | Hopper    | `90`                       | 12.0      |
+| RTX 50 / B100     | Blackwell | `120`                      | 13.0      |
+
+```bash
+git clone https://github.com/ggml-org/whisper.cpp ~/opt/whisper.cpp
+cmake -B ~/opt/whisper.cpp/build -S ~/opt/whisper.cpp \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DGGML_CUDA=ON \
+  -DCMAKE_CUDA_ARCHITECTURES=89 \
+  -DWHISPER_BUILD_TESTS=OFF
+cmake --build ~/opt/whisper.cpp/build -j --target whisper-cli
+sudo ln -sf ~/opt/whisper.cpp/build/bin/whisper-cli /usr/local/bin/whisper-cli
+```
+
+If you have multiple CUDA toolkits installed (e.g. Blackwell requires CUDA 13
+while the default `nvcc` is 12), also pass `-DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.3/bin/nvcc`
+to point at the matching `nvcc`. CUDA runtime libraries are resolved via
+ldconfig; no `LD_LIBRARY_PATH` is needed.
+
+At runtime the plugin records through sox's `pulseaudio` driver when `pactl`
+is available, and falls back to sox's default device otherwise.
+
+#### Download model & smoke test
+
+Download a whisper model to `~/.local/share/whisper-cpp/` (same path on both
+OSes):
 
 ```bash
 mkdir -p ~/.local/share/whisper-cpp
 curl -L -o ~/.local/share/whisper-cpp/ggml-large-v3-turbo-q5_0.bin \
   https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin
 ```
+
+Smoke-test the install by transcribing a short recording:
+
+```bash
+sox -d /tmp/smoke.wav trim 0 4   # say something for 4 seconds
+whisper-cli -m ~/.local/share/whisper-cpp/ggml-large-v3-turbo-q5_0.bin \
+  -f /tmp/smoke.wav -l auto -nt
+rm /tmp/smoke.wav
+```
+
+Check the first `system_info:` line in the output to confirm the expected
+backend is active:
+
+| Install                       | Expect                    |
+|-------------------------------|---------------------------|
+| macOS Homebrew (Apple Silicon)| `METAL = 1`               |
+| Linux CUDA build              | `CUDA : ARCHS = <n>`      |
+| CPU-only                      | `METAL = 0` / no `CUDA`   |
+
+Reference `encode time` on a 4-second clip: CPU `medium` ≈ 15–30 s; CUDA
+`medium` ≈ 100–200 ms; CUDA `large-v3-turbo` ≈ 100–300 ms. Apple Silicon
+Metal timings are hardware-dependent but typically sub-second. If your GPU
+build shows CPU-level timings, the GPU backend failed to load — on Linux,
+re-check `nvidia-smi` and rebuild with the arch code from the table above.
 
 ### Text-to-speech
 
@@ -218,6 +335,10 @@ If a path is not set, the built-in default prompt is used.
 | `/stt-model`  |            | Select whisper model                   |
 | `/stt-mic`    |            | Select microphone                      |
 
+`/stt-mic` lists CoreAudio input devices on macOS, and PulseAudio sources on
+Linux (via `pactl`, monitor sources excluded). On systems without a supported
+device listing, "System default" uses sox's default device (`sox -d`).
+
 ### Text-to-speech
 
 The `leader` key in OpenCode is `ctrl+x`. So `leader+s` means press `ctrl+x`
@@ -234,7 +355,8 @@ then `s`.
 
 ### STT pipeline
 
-1. `sox` records audio from your microphone
+1. `sox` records audio from your microphone (CoreAudio on macOS, PulseAudio on
+   Linux when `pactl` is available, sox default device otherwise)
 2. `whisper-cli` transcribes locally using a ggml model, or an OpenAI-compatible
    API endpoint if `sttEndpoint` is configured
 3. LLM normalizes the transcription: fixes punctuation, removes filler words,
