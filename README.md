@@ -95,6 +95,21 @@ On WSL2, make sure [WSLg](https://learn.microsoft.com/windows/wsl/tutorials/gui-
 is running — it bridges the Windows microphone into WSL as a PulseAudio source
 (typically named `RDPSource`), which you can then pick with `/stt-mic`.
 
+**WSL2 audio troubleshooting.** There is no `/dev/snd` in WSL2 — that is
+normal. Audio goes through WSLg's PulseAudio server at `/mnt/wslg/PulseServer`,
+so ALSA-only tools like `arecord -l` will never list a device. If `/stt-mic`
+finds no devices or `pactl info` fails with `Connection refused`, WSLg's
+PulseAudio is stuck; fix it from Windows PowerShell:
+
+```powershell
+wsl --shutdown   # then reopen Ubuntu (closes all WSL sessions)
+```
+
+If the source list is still empty after a restart, check Windows
+**Settings → Privacy & security → Microphone** and enable both "Microphone
+access" and "Let desktop apps access your microphone" (WSLg captures audio via
+a desktop RDP client), then run `wsl --update` for the latest WSLg.
+
 Verify your microphone by recording a 3-second clip and playing it back.
 Remove the temp file once you've heard yourself clearly; skip building
 whisper.cpp until this works, otherwise `/stt-mic` will have nothing to select:
@@ -123,13 +138,13 @@ sudo ln -sf ~/opt/whisper.cpp/build/bin/whisper-cli /usr/local/bin/whisper-cli
 Check your GPU with `nvidia-smi` and your toolkit with `nvcc --version`, then
 pick the arch code from the table:
 
-| GPU family        | Arch      | `CMAKE_CUDA_ARCHITECTURES` | Min. CUDA |
-|-------------------|-----------|----------------------------|-----------|
-| RTX 20 / T4       | Turing    | `75`                       | 10.0      |
-| RTX 30 / A100     | Ampere    | `86`                       | 11.0      |
-| RTX 40 / L40      | Ada       | `89`                       | 11.8      |
-| H100              | Hopper    | `90`                       | 12.0      |
-| RTX 50 / B100     | Blackwell | `120`                      | 13.0      |
+| GPU family    | Arch      | `CMAKE_CUDA_ARCHITECTURES` | Min. CUDA |
+| ------------- | --------- | -------------------------- | --------- |
+| RTX 20 / T4   | Turing    | `75`                       | 10.0      |
+| RTX 30 / A100 | Ampere    | `86`                       | 11.0      |
+| RTX 40 / L40  | Ada       | `89`                       | 11.8      |
+| H100          | Hopper    | `90`                       | 12.0      |
+| RTX 50 / B100 | Blackwell | `120`                      | 13.0      |
 
 ```bash
 git clone https://github.com/ggml-org/whisper.cpp ~/opt/whisper.cpp
@@ -173,11 +188,11 @@ rm /tmp/smoke.wav
 Check the first `system_info:` line in the output to confirm the expected
 backend is active:
 
-| Install                       | Expect                    |
-|-------------------------------|---------------------------|
-| macOS Homebrew (Apple Silicon)| `METAL = 1`               |
-| Linux CUDA build              | `CUDA : ARCHS = <n>`      |
-| CPU-only                      | `METAL = 0` / no `CUDA`   |
+| Install                        | Expect                  |
+| ------------------------------ | ----------------------- |
+| macOS Homebrew (Apple Silicon) | `METAL = 1`             |
+| Linux CUDA build               | `CUDA : ARCHS = <n>`    |
+| CPU-only                       | `METAL = 0` / no `CUDA` |
 
 Reference `encode time` on a 4-second clip: CPU `medium` ≈ 15–30 s; CUDA
 `medium` ≈ 100–200 ms; CUDA `large-v3-turbo` ≈ 100–300 ms. Apple Silicon

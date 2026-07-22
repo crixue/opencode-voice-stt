@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildAudioHint,
   buildOpenRouterTranscriptionRequest,
   buildRecordArgs,
   buildWhisperArgs,
   isOpenRouterEndpoint,
+  isWSL,
   parsePactlSources,
   parsePactlSourcesShort,
 } from "../lib/stt.js";
@@ -70,6 +72,42 @@ test("builds sox record args per audio backend", () => {
   ]);
   assert.deepEqual(buildRecordArgs("coreaudio", null), ["-d"]);
   assert.deepEqual(buildRecordArgs("default", null), ["-d"]);
+});
+
+test("builds audio hints per backend and server state", () => {
+  assert.match(
+    buildAudioHint({ backend: "pulseaudio", serverOk: false, isWsl: true }),
+    /wsl --shutdown/,
+  );
+  assert.match(
+    buildAudioHint({ backend: "pulseaudio", serverOk: false, isWsl: false }),
+    /PipeWire\/PulseAudio/,
+  );
+  assert.match(
+    buildAudioHint({ backend: "pulseaudio", serverOk: true, isWsl: false }),
+    /input source configuration/,
+  );
+  assert.equal(
+    buildAudioHint({ backend: "coreaudio", serverOk: false, isWsl: false }),
+    "No input devices found",
+  );
+});
+
+test("detects WSL via environment variables", () => {
+  const savedDistro = process.env.WSL_DISTRO_NAME;
+  const savedInterop = process.env.WSL_INTEROP;
+  try {
+    delete process.env.WSL_DISTRO_NAME;
+    delete process.env.WSL_INTEROP;
+    assert.equal(isWSL(), false);
+    process.env.WSL_DISTRO_NAME = "Ubuntu";
+    assert.equal(isWSL(), true);
+  } finally {
+    if (savedDistro === undefined) delete process.env.WSL_DISTRO_NAME;
+    else process.env.WSL_DISTRO_NAME = savedDistro;
+    if (savedInterop === undefined) delete process.env.WSL_INTEROP;
+    else process.env.WSL_INTEROP = savedInterop;
+  }
 });
 
 test("builds whisper-cli args with language", () => {
