@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="opencode-voice-stt — local whisper speech-to-text, LLM-normalized for code" width="800">
+</p>
+
 [![CI](https://github.com/crixue/opencode-voice-stt/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/crixue/opencode-voice-stt/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@crixue/opencode-voice-stt)](https://www.npmjs.com/package/@crixue/opencode-voice-stt)
@@ -5,13 +9,16 @@
 
 # opencode-voice-stt
 
-Speech-to-text plugin for [OpenCode](https://opencode.ai/).
+Speech-to-text (STT) plugin for [OpenCode](https://opencode.ai/).
 
-> Forked from [renjfk/opencode-voice](https://github.com/renjfk/opencode-voice) (© Soner Koksal, MIT). This version removes TTS and keeps only speech-to-text.
+> [!NOTE]
+> Forked from [renjfk/opencode-voice](https://github.com/renjfk/opencode-voice)
+> (© Soner Koksal, MIT). This version removes text-to-speech (TTS) and keeps
+> only speech-to-text (STT).
 
-Record voice prompts with local whisper transcription. An LLM normalizes the
-transcription for coding (fixing homophones, splitting camelCase identifiers,
-etc.) before it lands in the prompt.
+Record voice prompts, transcribe them locally with whisper, and have an LLM
+normalize the transcription for coding (fixing homophones, splitting camelCase
+identifiers, etc.) before it lands in the OpenCode prompt.
 
 ## Install
 
@@ -35,9 +42,11 @@ exist). You must configure at least `endpoint` and `model`:
     [
       "@crixue/opencode-voice-stt",
       {
-        "endpoint": "https://api.anthropic.com/v1",
-        "model": "claude-haiku-4-5",
-        "apiKeyEnv": "ANTHROPIC_API_KEY"
+        "endpoint": "https://api.deepseek.com/v1",
+        "model": "deepseek-v4-flash",
+        "apiKeyEnv": "${YOUR-API-KEY}",
+        "reasoningEffort": "low",
+        "tmpDir": "/tmp"
       }
     ]
   ]
@@ -53,16 +62,14 @@ update, clear the cached package and restart OpenCode:
 rm -rf ~/.cache/opencode/packages/@crixue/
 ```
 
-## Prerequisites
-
-### Speech-to-text
+## Setup
 
 The plugin uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp) via a
 `whisper-cli` binary and `sox` for microphone capture. Follow the subsection
 for your OS to install the binary and verify your microphone, then run the
 shared **Download model & smoke test** step at the end.
 
-#### macOS
+### macOS
 
 Install the `whisper-cpp` bottle (ships a `whisper-cli` with Metal enabled on
 Apple Silicon) and `sox`:
@@ -82,7 +89,7 @@ play /tmp/mic-check.wav              # you should hear yourself
 rm /tmp/mic-check.wav                # delete after verification
 ```
 
-#### Linux (including WSL2)
+### Linux (including WSL2)
 
 Install `sox` with its PulseAudio driver (a separate package on Debian/Ubuntu),
 the PulseAudio tools so the plugin can enumerate input devices via `pactl`,
@@ -170,7 +177,7 @@ ldconfig; no `LD_LIBRARY_PATH` is needed.
 At runtime the plugin records through sox's `pulseaudio` driver when `pactl`
 is available, and falls back to sox's default device otherwise.
 
-#### Windows
+### Windows
 
 Install `sox` and the build tools:
 
@@ -259,7 +266,7 @@ whisper-cli -m %USERPROFILE%\.local\share\whisper-cpp\ggml-large-v3-turbo-q5_0.b
 del %TEMP%\smoke.wav
 ```
 
-#### Download model & smoke test
+### Download model & smoke test
 
 Download a whisper model to `~/.local/share/whisper-cpp/` (same path on all
 OSes):
@@ -300,9 +307,12 @@ An OpenAI-compatible LLM endpoint is required for text normalization. It
 cleans up whisper output (punctuation, filler words, software engineering
 homophones).
 
-Configure your endpoint in `tui.json` via plugin options. Any OpenAI-compatible
-endpoint works (Anthropic, OpenAI, Ollama, vLLM, LM Studio, etc.). The `apiKeyEnv`
-option is optional - omit it for unauthenticated endpoints like Ollama.
+The recommended model is **DeepSeek V4 Flash** — it is fast, affordable, and
+highly capable for text normalization tasks. Any OpenAI-compatible endpoint
+also works (Anthropic, OpenAI, Ollama, vLLM, LM Studio, etc.). The `apiKeyEnv`
+option is optional — omit it for unauthenticated endpoints like Ollama.
+
+Configure your endpoint in `tui.json` via plugin options:
 
 ```json
 {
@@ -310,9 +320,11 @@ option is optional - omit it for unauthenticated endpoints like Ollama.
     [
       "@crixue/opencode-voice-stt",
       {
-        "endpoint": "https://api.anthropic.com/v1",
-        "model": "claude-haiku-4-5",
-        "apiKeyEnv": "ANTHROPIC_API_KEY"
+        "endpoint": "https://api.deepseek.com/v1",
+        "model": "deepseek-v4-flash",
+        "apiKeyEnv": "${YOUR-API-KEY}",
+        "reasoningEffort": "low",
+        "tmpDir": "/tmp"
       }
     ]
   ]
