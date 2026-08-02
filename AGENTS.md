@@ -1,4 +1,4 @@
-# AGENTS.md - opencode-voice
+# AGENTS.md - opencode-voice-stt
 
 Guidelines for AI agents working in this repository. Keep this file concise -
 only document constraints and rules an agent would get wrong without being told.

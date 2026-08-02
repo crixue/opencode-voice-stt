@@ -1,6 +1,6 @@
 # Manual release process
 
-This document describes the step-by-step manual release process for opencode-voice using AI assistance to analyze commits, generate release notes, and trigger the GitHub Actions workflow via opencode (with `gh` CLI integration).
+This document describes the step-by-step manual release process for opencode-voice-stt using AI assistance to analyze commits, generate release notes, and trigger the GitHub Actions workflow via opencode (with `gh` CLI integration).
 
 ## Overview
 
@@ -25,7 +25,7 @@ Use this prompt in opencode to handle the entire release process:
 ### Master release prompt
 
 ```
-I need to create a new release for opencode-voice. Please:
+I need to create a new release for opencode-voice-stt. Please:
 
 STEP 1: ANALYZE COMMITS
 - Use `gh` CLI or available tools to get the latest release tag

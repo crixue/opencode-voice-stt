@@ -1,16 +1,17 @@
-[![CI](https://github.com/renjfk/opencode-voice/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/renjfk/opencode-voice/actions/workflows/ci.yml)
+[![CI](https://github.com/crixue/opencode-voice-stt/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/crixue/opencode-voice-stt/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![npm](https://img.shields.io/npm/v/@renjfk/opencode-voice)](https://www.npmjs.com/package/@renjfk/opencode-voice)
-[![Downloads](https://img.shields.io/npm/dm/@renjfk/opencode-voice)](https://www.npmjs.com/package/@renjfk/opencode-voice)
+[![npm](https://img.shields.io/npm/v/@crixue/opencode-voice-stt)](https://www.npmjs.com/package/@crixue/opencode-voice-stt)
+[![Downloads](https://img.shields.io/npm/dm/@crixue/opencode-voice-stt)](https://www.npmjs.com/package/@crixue/opencode-voice-stt)
 
-# opencode-voice
+# opencode-voice-stt
 
-Speech-to-text and text-to-speech plugin for [OpenCode](https://opencode.ai/).
+Speech-to-text plugin for [OpenCode](https://opencode.ai/).
 
-Record voice prompts with local whisper transcription, hear assistant responses
-spoken aloud via Piper TTS. Both directions use an LLM to normalize text for
-natural speech (fixing homophones, splitting camelCase identifiers, summarizing
-code-heavy responses, etc.).
+> Forked from [renjfk/opencode-voice](https://github.com/renjfk/opencode-voice) (© Soner Koksal, MIT). This version removes TTS and keeps only speech-to-text.
+
+Record voice prompts with local whisper transcription. An LLM normalizes the
+transcription for coding (fixing homophones, splitting camelCase identifiers,
+etc.) before it lands in the prompt.
 
 ## Install
 
@@ -32,7 +33,7 @@ exist). You must configure at least `endpoint` and `model`:
   },
   "plugin": [
     [
-      "@renjfk/opencode-voice",
+      "@crixue/opencode-voice-stt",
       {
         "endpoint": "https://api.anthropic.com/v1",
         "model": "claude-haiku-4-5",
@@ -49,7 +50,7 @@ If OpenCode keeps using an older published version of the plugin after an
 update, clear the cached package and restart OpenCode:
 
 ```bash
-rm -rf ~/.cache/opencode/packages/@renjfk/
+rm -rf ~/.cache/opencode/packages/@crixue/
 ```
 
 ## Prerequisites
@@ -293,38 +294,11 @@ Metal timings are hardware-dependent but typically sub-second. If your GPU
 build shows CPU-level timings, the GPU backend failed to load — on Linux,
 re-check `nvidia-smi` and rebuild with the arch code from the table above.
 
-### Text-to-speech
-
-Install [Piper](https://github.com/rhasspy/piper):
-
-```bash
-uv tool install piper-tts
-```
-
-Or with pip:
-
-```bash
-pip install piper-tts
-```
-
-The plugin looks for `piper` on your `PATH` (`~/.local/bin` is typically on `PATH`).
-
-Download a voice model to `~/.local/share/piper-voices/`:
-
-```bash
-mkdir -p ~/.local/share/piper-voices
-curl -L -o ~/.local/share/piper-voices/en_US-ryan-high.onnx \
-  https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx
-curl -L -o ~/.local/share/piper-voices/en_US-ryan-high.onnx.json \
-  https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx.json
-```
-
 ### LLM endpoint
 
-An OpenAI-compatible LLM endpoint is required for text normalization. For
-speech-to-text it cleans up whisper output (punctuation, filler words, software
-engineering homophones). For text-to-speech it converts markdown into natural
-spoken text.
+An OpenAI-compatible LLM endpoint is required for text normalization. It
+cleans up whisper output (punctuation, filler words, software engineering
+homophones).
 
 Configure your endpoint in `tui.json` via plugin options. Any OpenAI-compatible
 endpoint works (Anthropic, OpenAI, Ollama, vLLM, LM Studio, etc.). The `apiKeyEnv`
@@ -334,7 +308,7 @@ option is optional - omit it for unauthenticated endpoints like Ollama.
 {
   "plugin": [
     [
-      "@renjfk/opencode-voice",
+      "@crixue/opencode-voice-stt",
       {
         "endpoint": "https://api.anthropic.com/v1",
         "model": "claude-haiku-4-5",
@@ -351,7 +325,7 @@ For unauthenticated local endpoints (e.g. Ollama):
 {
   "plugin": [
     [
-      "@renjfk/opencode-voice",
+      "@crixue/opencode-voice-stt",
       {
         "endpoint": "http://localhost:11434/v1",
         "model": "llama3.2"
@@ -389,7 +363,7 @@ plugin on a machine without whisper-cpp installed.
 {
   "plugin": [
     [
-      "@renjfk/opencode-voice",
+      "@crixue/opencode-voice-stt",
       {
         "sttEndpoint": "http://127.0.0.1:8000/v1",
         "sttModel": "whisper-large-v3-turbo",
@@ -408,19 +382,17 @@ OpenRouter note: when `sttEndpoint` points at `https://openrouter.ai/api/v1`, th
 
 ### Custom prompts
 
-The LLM system prompts used for normalization can be fully replaced by pointing
-to your own prompt files. This lets you fine-tune how transcriptions are cleaned
-up or how responses are spoken.
+The LLM system prompt used for normalization can be fully replaced by pointing
+to your own prompt file. This lets you fine-tune how transcriptions are cleaned
+up.
 
 ```json
 {
   "plugin": [
     [
-      "@renjfk/opencode-voice",
+      "@crixue/opencode-voice-stt",
       {
-        "sttPrompt": "~/.config/opencode/stt-prompt.md",
-        "ttsAutoPrompt": "~/.config/opencode/tts-auto-prompt.md",
-        "ttsManualPrompt": "~/.config/opencode/tts-manual-prompt.md"
+        "sttPrompt": "~/.config/opencode/stt-prompt.md"
       }
     ]
   ]
@@ -428,14 +400,13 @@ up or how responses are spoken.
 ```
 
 - `sttPrompt` _(optional)_ - system prompt for cleaning up whisper transcriptions
-- `ttsAutoPrompt` _(optional)_ - system prompt for auto-speaking assistant responses
-- `ttsManualPrompt` _(optional)_ - system prompt for manually reading responses aloud
 
 If a path is not set, the built-in default prompt is used.
 
 ## Commands
 
-### Speech-to-text
+The `leader` key in OpenCode is `ctrl+x`. So `leader+r` means press `ctrl+x`
+then `r`.
 
 | Command         | Keybind    | Description                            |
 | --------------- | ---------- | -------------------------------------- |
@@ -454,21 +425,7 @@ device listing, "System default" uses sox's default device (`sox -d`).
 and only affects local `whisper-cli` transcription, not the STT API. Languages
 outside the list can be set via the `sttLanguage` plugin option.
 
-### Text-to-speech
-
-The `leader` key in OpenCode is `ctrl+x`. So `leader+s` means press `ctrl+x`
-then `s`.
-
-| Command      | Keybind    | Description              |
-| ------------ | ---------- | ------------------------ |
-| `/tts-speak` | `leader+s` | Read last response aloud |
-| `/tts-mode`  | `leader+v` | Toggle auto TTS on/off   |
-| `/tts-stop`  | `escape`   | Stop playback            |
-| `/tts-voice` |            | Select TTS voice         |
-
 ## How it works
-
-### STT pipeline
 
 1. `sox` records audio from your microphone (CoreAudio on macOS, PulseAudio on
    Linux when `pactl` is available, sox default device otherwise)
@@ -482,25 +439,9 @@ then `s`.
    unreachable), the raw transcription is used as a fallback so you never lose
    your input
 
-### TTS pipeline
-
-1. When the assistant finishes responding (or on manual trigger), the response
-   text is sent to the LLM for speech normalization
-2. The LLM decides how to handle it: narrate simple answers, summarize
-   code-heavy responses, or briefly notify for confirmations
-3. Piper synthesizes speech locally, piped through sox for playback
-
-### Auto TTS
-
-When enabled (`/tts-mode`), the plugin automatically speaks:
-
-- Assistant responses when a session goes idle after work
-- Permission requests
-- Questions that need your answer
-
 ## Contributing
 
-opencode-voice is open to contributions and ideas!
+opencode-voice-stt is open to contributions and ideas!
 
 ### Issue conventions
 
@@ -530,7 +471,7 @@ at the local repo path, not the npm package name:
 ```json
 {
   "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["/Users/your-user/opencode-voice"]
+  "plugin": ["/Users/your-user/opencode-voice-stt"]
 }
 ```
 

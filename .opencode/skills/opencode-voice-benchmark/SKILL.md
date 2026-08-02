@@ -1,9 +1,9 @@
 ---
 name: opencode-voice-benchmark
-description: Use when benchmarking opencode-voice STT normalization latency, local/OpenAI-compatible LLM models, Qwen thinking settings, or cache effects.
+description: Use when benchmarking opencode-voice-stt normalization latency, local/OpenAI-compatible LLM models, Qwen thinking settings, or cache effects.
 ---
 
-# opencode-voice Benchmarking
+# opencode-voice-stt Benchmarking
 
 Use this skill to produce actual STT normalization benchmark numbers. Keep the benchmark temporary unless the user asks to keep it.
 
