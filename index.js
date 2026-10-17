@@ -1,61 +1,26 @@
-// opencode-voice-stt: Speech-to-text for OpenCode.
+// opencode-voice-stt: Speech-to-text for OpenCode V2.
 //
 // STT: Record voice via sox, transcribe with whisper-cpp, normalize with
-//      an OpenAI-compatible LLM, append to the TUI prompt.
+//      an OpenAI-compatible LLM, then submit it as a prompt (or edit it in a
+//      dialog first when submitOnStop is off).
 //
 // Prerequisites:
 //   STT: brew install whisper-cpp sox   (see README for Linux/Windows)
 //
-// Configuration via tui.json plugin options:
-//   ["@crixue/opencode-voice-stt", { "endpoint": "...", "model": "...", "apiKeyEnv": "..." }]
+// Configuration via cli.json plugin options:
+//   { "plugins": [{ "package": "@crixue/opencode-voice-stt", "options": { ... } }] }
 //
-// Runtime state (model, mic, language) persisted via api.kv.
+// Runtime state (model, mic, language) persisted via context.storage.
 //
 // Commands:
-//   /stt-record (ctrl+r)  - start/stop recording + transcribe
-//   /stt-submit (leader+r)- stop recording + transcribe + submit
-//   /stt-stop             - cancel recording
-//   /stt-model            - select whisper model
-//   /stt-language         - select transcription language
-//   /stt-mic              - select microphone
+//   /stt-record (ctrl+r)   - start/stop recording + transcribe + send
+//   /stt-submit            - stop recording + transcribe + send
+//   /stt-stop (ctrl+y)     - cancel recording
+//   /stt-model             - select whisper model
+//   /stt-language          - select transcription language
+//   /stt-mic               - select microphone
 
-import fs from "node:fs";
-import os from "node:os";
-import { registerSTT } from "./lib/stt.js";
-import { createClient } from "./lib/llm-client.js";
-import { createLogger } from "./lib/logger.js";
+import { Plugin } from "@opencode/plugin/tui";
+import { createPluginDefinition } from "./lib/plugin.js";
 
-function loadPromptFile(filePath, logger, name) {
-  if (!filePath) return null;
-  const resolved = filePath.replace(/^~(?=\/|$)/, os.homedir());
-  try {
-    const prompt = fs.readFileSync(resolved, "utf-8").trim() || null;
-    logger?.log(
-      "plugin",
-      prompt ? `Loaded ${name} prompt: ${resolved}` : `Ignored empty ${name} prompt: ${resolved}`,
-      "debug",
-    );
-    return prompt;
-  } catch (err) {
-    logger?.log("Plugin", `Failed to load ${name} prompt ${resolved}: ${err.message}`, "warn");
-    return null;
-  }
-}
-
-export default {
-  id: "opencode-voice-stt",
-  tui: async (api, options) => {
-    const { kv } = api;
-    const logger = createLogger(api.client);
-    logger.log("plugin", "Initializing", "debug");
-    const { complete } = createClient(options, logger);
-
-    const prompts = {
-      stt: loadPromptFile(options?.sttPrompt, logger, "STT"),
-    };
-
-    const sttCommands = registerSTT(api, kv, complete, prompts, options, logger);
-
-    api.command.register(() => sttCommands);
-  },
-};
+export default Plugin.define(createPluginDefinition());

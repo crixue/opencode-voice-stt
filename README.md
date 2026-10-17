@@ -9,7 +9,7 @@
 
 # opencode-voice-stt
 
-Speech-to-text (STT) plugin for [OpenCode](https://opencode.ai/).
+Speech-to-text (STT) plugin for [OpenCode V2](https://opencode.ai/v2/docs/cli/plugins).
 
 > [!NOTE]
 > Forked from [renjfk/opencode-voice](https://github.com/renjfk/opencode-voice)
@@ -20,10 +20,15 @@ Record voice prompts, transcribe them locally with whisper, and have an LLM
 normalize the transcription for coding (fixing homophones, splitting camelCase
 identifiers, etc.) before it lands in the OpenCode prompt.
 
+> [!NOTE]
+> **OpenCode V2 only.** V2 ships a new plugin API; V1 implementations do not
+> run on it. This version targets OpenCode V2 (`opencode-v2`). V1 is no longer
+> supported.
+
 ## Install
 
-Add to your `tui.json` (create at `~/.config/opencode/tui.json` if it doesn't
-exist). You must configure at least `endpoint` and `model`:
+Add the plugin to your `cli.json` (create at `~/.config/opencode/cli.json` if
+it doesn't exist). You must configure at least `endpoint` and `model`:
 
 > [!NOTE]
 > **Clobbering default keybinds.** This plugin uses `ctrl+r` for voice
@@ -34,29 +39,33 @@ exist). You must configure at least `endpoint` and `model`:
 
 ```json
 {
-  "$schema": "https://opencode.ai/tui.json",
+  "$schema": "https://opencode.ai/v2/cli.json",
   "keybinds": {
-    "session_rename": "none"
+    "session.rename": "none"
   },
-  "plugin": [
-    [
-      "@crixue/opencode-voice-stt",
-      {
+  "plugins": [
+    {
+      "package": "@crixue/opencode-voice-stt",
+      "options": {
         "endpoint": "https://api.deepseek.com/v1",
         "model": "deepseek-v4-flash",
         "apiKeyEnv": "${YOUR-API-KEY}",
         "reasoningEffort": "low",
         "tmpDir": "/tmp"
       }
-    ]
+    }
   ]
 }
 ```
 
+Use a package name (`@crixue/opencode-voice-stt`) or a local path
+(`/path/to/opencode-voice-stt`) in `package`. Local paths are loaded straight
+from disk, so edits are picked up on save.
+
 ### Refresh cached plugin after updates
 
-If OpenCode keeps using an older published version of the plugin after an
-update, clear the cached package and restart OpenCode:
+If you install from npm and OpenCode keeps using an older published version of
+the plugin after an update, clear the cached package and restart OpenCode:
 
 ```bash
 rm -rf ~/.cache/opencode/packages/@crixue/
@@ -253,7 +262,7 @@ reopen OpenCode so it inherits the new `PATH`. Note: `PATH` changes only take
 effect in new processes. If OpenCode was already running, it must be restarted
 to see the updated environment. If OpenCode still can't find the binary (its
 environment predates the `PATH` change), set the `whisperPath` plugin option
-in `tui.json` to the full path of `whisper-cli.exe` instead — that bypasses
+in `cli.json` to the full path of `whisper-cli.exe` instead — that bypasses
 `PATH` lookup entirely.
 
 Download a model per the shared section below (on Windows the model directory
@@ -312,21 +321,21 @@ highly capable for text normalization tasks. Any OpenAI-compatible endpoint
 also works (Anthropic, OpenAI, Ollama, vLLM, LM Studio, etc.). The `apiKeyEnv`
 option is optional — omit it for unauthenticated endpoints like Ollama.
 
-Configure your endpoint in `tui.json` via plugin options:
+Configure your endpoint in `cli.json` via plugin options:
 
 ```json
 {
-  "plugin": [
-    [
-      "@crixue/opencode-voice-stt",
-      {
+  "plugins": [
+    {
+      "package": "@crixue/opencode-voice-stt",
+      "options": {
         "endpoint": "https://api.deepseek.com/v1",
         "model": "deepseek-v4-flash",
         "apiKeyEnv": "${YOUR-API-KEY}",
         "reasoningEffort": "low",
         "tmpDir": "/tmp"
       }
-    ]
+    }
   ]
 }
 ```
@@ -335,14 +344,14 @@ For unauthenticated local endpoints (e.g. Ollama):
 
 ```json
 {
-  "plugin": [
-    [
-      "@crixue/opencode-voice-stt",
-      {
+  "plugins": [
+    {
+      "package": "@crixue/opencode-voice-stt",
+      "options": {
         "endpoint": "http://localhost:11434/v1",
         "model": "llama3.2"
       }
-    ]
+    }
   ]
 }
 ```
@@ -357,13 +366,17 @@ For unauthenticated local endpoints (e.g. Ollama):
 - `tmpDir` _(optional)_ - directory used for the temporary STT recording file (default `/tmp`)
 - `sttLanguage` _(optional)_ - spoken language passed to local `whisper-cli -l` (default `auto`; any whisper.cpp language code, e.g. `en`, `zh`). Can be changed at runtime via `/stt-language`
 - `whisperPath` _(optional)_ - full path to the `whisper-cli` binary (default: resolved via `PATH`). Useful on Windows when OpenCode's process environment predates a `PATH` change
+- `submitOnStop` _(optional)_ - when `true`, stopping a recording sends the transcription as a prompt immediately (default `false`, which opens an edit dialog first)
+- `recordKeybind` _(optional)_ - key that toggles recording (default `ctrl+r`)
+- `cancelKeybind` _(optional)_ - key that cancels recording (default `ctrl+y`)
+- `submitKeybind` _(optional)_ - key for `/stt-submit` (default: no keybind; use the command)
 
 ### Logging
 
-The plugin writes diagnostics through OpenCode's structured app logger. If this plugin is not working with your setup, check the OpenCode log file and, optionally, enable debug mode. See the [OpenCode Docs](https://opencode.ai/docs/troubleshooting/#logs) for details.
-
-Routine plugin diagnostics use `debug`; recoverable issues use `warn`; failed
-child processes, API calls, or unexpected exceptions use `error`.
+Set `OPENCODE_VOICE_LOG` to a file path to enable plugin diagnostics, e.g.
+`OPENCODE_VOICE_LOG=~/.local/share/opencode/log/opencode-voice-stt.log opencode`.
+Routine diagnostics use `debug`; recoverable issues use `warn`; failed child
+processes, API calls, or unexpected exceptions use `error`.
 
 ### STT API transcription (optional)
 
@@ -373,15 +386,15 @@ plugin on a machine without whisper-cpp installed.
 
 ```json
 {
-  "plugin": [
-    [
-      "@crixue/opencode-voice-stt",
-      {
+  "plugins": [
+    {
+      "package": "@crixue/opencode-voice-stt",
+      "options": {
         "sttEndpoint": "http://127.0.0.1:8000/v1",
         "sttModel": "whisper-large-v3-turbo",
         "sttApiKeyEnv": "MY_STT_API_KEY"
       }
-    ]
+    }
   ]
 }
 ```
@@ -400,13 +413,13 @@ up.
 
 ```json
 {
-  "plugin": [
-    [
-      "@crixue/opencode-voice-stt",
-      {
+  "plugins": [
+    {
+      "package": "@crixue/opencode-voice-stt",
+      "options": {
         "sttPrompt": "~/.config/opencode/stt-prompt.md"
       }
-    ]
+    }
   ]
 }
 ```
@@ -417,17 +430,14 @@ If a path is not set, the built-in default prompt is used.
 
 ## Commands
 
-The `leader` key in OpenCode is `ctrl+x`. So `leader+r` means press `ctrl+x`
-then `r`.
-
-| Command         | Keybind    | Description                            |
-| --------------- | ---------- | -------------------------------------- |
-| `/stt-record`   | `ctrl+r`   | Start/stop recording + transcribe      |
-| `/stt-submit`   | `leader+r` | Stop recording, transcribe, and submit |
-| `/stt-stop`     |            | Cancel recording                       |
-| `/stt-model`    |            | Select whisper model                   |
-| `/stt-language` |            | Select transcription language          |
-| `/stt-mic`      |            | Select microphone                      |
+| Command         | Keybind  | Description                          |
+| --------------- | -------- | ------------------------------------ |
+| `/stt-record`   | `ctrl+r` | Start/stop recording + transcribe    |
+| `/stt-submit`   |          | Stop recording, transcribe, and send |
+| `/stt-stop`     | `ctrl+y` | Cancel recording                     |
+| `/stt-model`    |          | Select whisper model                 |
+| `/stt-language` |          | Select transcription language        |
+| `/stt-mic`      |          | Select microphone                    |
 
 `/stt-mic` lists CoreAudio input devices on macOS, and PulseAudio sources on
 Linux (via `pactl`, monitor sources excluded). On systems without a supported
@@ -446,10 +456,18 @@ outside the list can be set via the `sttLanguage` plugin option.
 3. LLM normalizes the transcription: fixes punctuation, removes filler words,
    corrects software engineering homophones ("Jason" to "JSON", "bullion" to
    "boolean", etc.)
-4. Cleaned text is appended to the OpenCode prompt, or submitted immediately
-   when `/stt-submit` is used. If normalization fails (e.g. LLM endpoint
-   unreachable), the raw transcription is used as a fallback so you never lose
-   your input
+4. Cleaned text is sent as a prompt (creating a session first when you are on
+   the home screen). With `submitOnStop: true` it is sent immediately;
+   otherwise an edit dialog opens first, and pressing Enter sends the edited
+   text. If normalization fails (e.g. LLM endpoint unreachable), the raw
+   transcription is used as a fallback so you never lose your input
+
+   > [!NOTE]
+   > OpenCode V2 does not yet expose the input composer to plugins
+   > ([opencode#51209](https://github.com/anomalyco/opencode/issues/51209),
+   > [opencode#51392](https://github.com/anomalyco/opencode/issues/51392)), so
+   > transcriptions cannot be appended to an in-progress draft. Voice input
+   > sends a prompt instead; use the edit dialog to review it first.
 
 ## Contributing
 
@@ -477,13 +495,13 @@ npm run fmt:fix      # oxfmt --write
 
 ### Test local plugin in OpenCode
 
-To test unpublished changes in the OpenCode TUI, point `~/.config/opencode/tui.json`
-at the local repo path, not the npm package name:
+To test unpublished changes in the OpenCode TUI, point
+`~/.config/opencode/cli.json` at the local repo path, not the npm package name:
 
 ```json
 {
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["/Users/your-user/opencode-voice-stt"]
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "plugins": ["/Users/your-user/opencode-voice-stt"]
 }
 ```
 
@@ -502,6 +520,8 @@ Behavior:
 
 Notes:
 
+- The submit shortcut requires setting `submitKeybind: "<leader>r"` in the
+  plugin options, since `/stt-submit` has no default keybind on V2.
 - It assumes OpenCode is using the default leader key, `ctrl+x`.
 - It assumes OpenCode is running in Ghostty terminal `1`.
 - It is best used as a push-to-talk flow: hold `Fn` while speaking, then
