@@ -88,7 +88,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
 
       - run: npm install
 
@@ -100,6 +99,10 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --access public
+        env:
+          # Trusted publishing (OIDC): an empty token keeps setup-node's
+          # placeholder out of .npmrc so npm performs the OIDC exchange.
+          NODE_AUTH_TOKEN: ""
 
       - name: Download release notes
         uses: actions/download-artifact@v4
