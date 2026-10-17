@@ -93,7 +93,7 @@ jobs:
       - run: npm install
 
       - name: Set package version
-        run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version
+        run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Verify package
         run: npm pack --dry-run
