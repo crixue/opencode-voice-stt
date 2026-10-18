@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createPluginDefinition } from "../lib/plugin.js";
+import { applyVoiceDialogLayout } from "../lib/stt.js";
 
 let moduleExport = null;
 try {
@@ -133,4 +134,58 @@ test("selecting a model persists the choice through storage", async () => {
   const model = registered.find((command) => command.id === "opencode-voice-stt.model");
   await model.run();
   assert.equal(store["stt.model"], "tiny.en");
+});
+
+function createFakeRenderer(textarea) {
+  const calls = [];
+  return {
+    calls,
+    get currentFocusedRenderable() {
+      return textarea;
+    },
+    requestRender: () => calls.push("render"),
+  };
+}
+
+test("voice dialog widens and grows the seeded textarea", async () => {
+  const { context } = createFakeContext();
+  const calls = [];
+  const textarea = {
+    plainText: "hello world",
+    setText() {},
+    wrapMode: "none",
+    height: 1,
+    getLayoutNode: () => ({ markDirty: () => calls.push("dirty") }),
+  };
+  const renderer = createFakeRenderer(textarea);
+  context.renderer = renderer;
+  const dialog = { set: (options) => calls.push(["set", options]) };
+
+  applyVoiceDialogLayout(context, "hello world", dialog, null);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+
+  assert.deepEqual(calls[0], ["set", { size: "xlarge", centered: true }]);
+  assert.equal(textarea.height, 8);
+  assert.equal(textarea.wrapMode, "word");
+  assert.ok(calls.includes("dirty"));
+  assert.ok(renderer.calls.includes("render"));
+});
+
+test("voice dialog leaves an unrelated focused textarea alone", async () => {
+  const { context } = createFakeContext();
+  const composer = {
+    plainText: "existing draft",
+    setText() {},
+    wrapMode: "none",
+    height: 4,
+  };
+  const renderer = createFakeRenderer(composer);
+  context.renderer = renderer;
+
+  applyVoiceDialogLayout(context, "hello world", { set: () => {} }, null);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+
+  assert.equal(composer.height, 4);
+  assert.equal(composer.wrapMode, "none");
+  assert.deepEqual(renderer.calls, []);
 });

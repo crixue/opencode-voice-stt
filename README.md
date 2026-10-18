@@ -367,6 +367,8 @@ For unauthenticated local endpoints (e.g. Ollama):
 - `sttLanguage` _(optional)_ - spoken language passed to local `whisper-cli -l` (default `auto`; any whisper.cpp language code, e.g. `en`, `zh`). Can be changed at runtime via `/stt-language`
 - `whisperPath` _(optional)_ - full path to the `whisper-cli` binary (default: resolved via `PATH`). Useful on Windows when OpenCode's process environment predates a `PATH` change
 - `submitOnStop` _(optional)_ - when `true`, stopping a recording sends the transcription as a prompt immediately (default `false`, which opens an edit dialog first)
+- `dialogSize` _(optional)_ - width of the transcription edit dialog: `medium` (60 columns), `large` (88), or `xlarge` (116). Default `xlarge`. Only used when `submitOnStop` is off
+- `dialogHeight` _(optional)_ - number of visible text lines in the transcription edit dialog (default `8`, clamped to 30). Only used when `submitOnStop` is off
 - `recordKeybind` _(optional)_ - key that toggles recording (default `ctrl+r`)
 - `cancelKeybind` _(optional)_ - key that cancels recording (default `ctrl+y`)
 - `submitKeybind` _(optional)_ - key for `/stt-submit` (default: no keybind; use the command)
