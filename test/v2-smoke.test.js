@@ -10,7 +10,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createPluginDefinition } from "../lib/plugin.js";
-import { applyVoiceDialogLayout, appendToComposer, captureComposerTarget } from "../lib/stt.js";
+import {
+  applyVoiceDialogLayout,
+  appendToComposer,
+  captureComposerTarget,
+  deliverTranscription,
+} from "../lib/stt.js";
 
 let moduleExport = null;
 try {
@@ -246,4 +251,45 @@ test("voice write-back is skipped when no composer was focused", () => {
 
   captureComposerTarget(context, null);
   assert.equal(appendToComposer(context, "hello", null), false);
+});
+
+test("delivery appends to the composer without opening the dialog", async () => {
+  const { context } = createFakeContext();
+  const composer = createFakeComposer("draft");
+  context.renderer = { currentFocusedRenderable: composer, requestRender() {} };
+  captureComposerTarget(context, null);
+
+  let dialogOpened = false;
+  context.ui.dialog.prompt = async () => {
+    dialogOpened = true;
+    return undefined;
+  };
+
+  // A logger must be forwarded so delivery never touches an undefined binding.
+  const delivery = await deliverTranscription(context, "hello", false, null);
+
+  assert.equal(delivery, "prompt");
+  assert.equal(dialogOpened, false);
+  assert.deepEqual(composer.inserted, [" hello"]);
+});
+
+test("delivery falls back to the edit dialog when write-back is unavailable", async () => {
+  const { context } = createFakeContext();
+  captureComposerTarget(context, null); // no renderer: nothing to write back to
+
+  let prompted;
+  context.ui.dialog.prompt = async (options) => {
+    prompted = options;
+    return "edited text";
+  };
+  let submitted;
+  context.client.session.prompt = async (input) => {
+    submitted = input;
+  };
+
+  const delivery = await deliverTranscription(context, "hello", false, null);
+
+  assert.equal(delivery, "sent");
+  assert.equal(prompted.value, "hello");
+  assert.equal(submitted.text, "edited text");
 });
