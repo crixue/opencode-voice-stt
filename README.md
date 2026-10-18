@@ -366,9 +366,10 @@ For unauthenticated local endpoints (e.g. Ollama):
 - `tmpDir` _(optional)_ - directory used for the temporary STT recording file (default `/tmp`)
 - `sttLanguage` _(optional)_ - spoken language passed to local `whisper-cli -l` (default `auto`; any whisper.cpp language code, e.g. `en`, `zh`). Can be changed at runtime via `/stt-language`
 - `whisperPath` _(optional)_ - full path to the `whisper-cli` binary (default: resolved via `PATH`). Useful on Windows when OpenCode's process environment predates a `PATH` change
-- `submitOnStop` _(optional)_ - when `true`, stopping a recording sends the transcription as a prompt immediately (default `false`, which opens an edit dialog first)
-- `dialogSize` _(optional)_ - width of the transcription edit dialog: `medium` (60 columns), `large` (88), or `xlarge` (116). Default `xlarge`. Only used when `submitOnStop` is off
-- `dialogHeight` _(optional)_ - number of visible text lines in the transcription edit dialog (default `8`, clamped to 30). Only used when `submitOnStop` is off
+- `submitOnStop` _(optional)_ - when `true`, stopping a recording sends the transcription as a prompt immediately (default `false`, which appends it to the prompt composer so you can review it first)
+- `appendToPrompt` _(optional)_ - when `true` (default), the transcription is appended to the prompt composer as a draft. Set `false` to always open the edit dialog instead
+- `dialogSize` _(optional)_ - width of the transcription edit dialog: `medium` (60 columns), `large` (88), or `xlarge` (116). Default `xlarge`. Only used when the dialog opens
+- `dialogHeight` _(optional)_ - number of visible text lines in the transcription edit dialog (default `8`, clamped to 30). Only used when the dialog opens
 - `recordKeybind` _(optional)_ - key that toggles recording (default `ctrl+r`)
 - `cancelKeybind` _(optional)_ - key that cancels recording (default `ctrl+y`)
 - `submitKeybind` _(optional)_ - key for `/stt-submit` (default: no keybind; use the command)
@@ -458,18 +459,20 @@ outside the list can be set via the `sttLanguage` plugin option.
 3. LLM normalizes the transcription: fixes punctuation, removes filler words,
    corrects software engineering homophones ("Jason" to "JSON", "bullion" to
    "boolean", etc.)
-4. Cleaned text is sent as a prompt (creating a session first when you are on
-   the home screen). With `submitOnStop: true` it is sent immediately;
-   otherwise an edit dialog opens first, and pressing Enter sends the edited
-   text. If normalization fails (e.g. LLM endpoint unreachable), the raw
+4. Cleaned text is appended to the prompt composer as a draft, so you can
+   review or edit it before pressing Enter. With `submitOnStop: true` it is
+   sent immediately instead. When the composer is not focused/unavailable (or
+   `appendToPrompt: false`), an edit dialog opens and pressing Enter sends the
+   edited text. If normalization fails (e.g. LLM endpoint unreachable), the raw
    transcription is used as a fallback so you never lose your input
 
    > [!NOTE]
-   > OpenCode V2 does not yet expose the input composer to plugins
+   > OpenCode V2 does not expose the composer to plugins
    > ([opencode#51209](https://github.com/anomalyco/opencode/issues/51209),
    > [opencode#51392](https://github.com/anomalyco/opencode/issues/51392)), so
-   > transcriptions cannot be appended to an in-progress draft. Voice input
-   > sends a prompt instead; use the edit dialog to review it first.
+   > write-back uses the same OpenTUI `insertText` call the host runs for its
+   > internal `tui.prompt.append` event. It falls back to the edit dialog when
+   > the composer cannot be identified.
 
 ## Contributing
 

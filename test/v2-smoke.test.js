@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createPluginDefinition } from "../lib/plugin.js";
-import { applyVoiceDialogLayout } from "../lib/stt.js";
+import { applyVoiceDialogLayout, appendToComposer, captureComposerTarget } from "../lib/stt.js";
 
 let moduleExport = null;
 try {
@@ -188,4 +188,62 @@ test("voice dialog leaves an unrelated focused textarea alone", async () => {
   assert.equal(composer.height, 4);
   assert.equal(composer.wrapMode, "none");
   assert.deepEqual(renderer.calls, []);
+});
+
+function createFakeComposer(initial = "existing") {
+  const inserted = [];
+  const composer = {
+    plainText: initial,
+    isDestroyed: false,
+    inserted,
+    insertText(text) {
+      inserted.push(text);
+      composer.plainText += text;
+    },
+    gotoBufferEnd() {},
+    focus() {},
+    getLayoutNode: () => ({ markDirty() {} }),
+  };
+  return composer;
+}
+
+test("voice write-back appends to the composer captured at record start", () => {
+  const { context } = createFakeContext();
+  const composer = createFakeComposer("existing");
+  context.renderer = { currentFocusedRenderable: composer, requestRender() {} };
+
+  captureComposerTarget(context, null);
+  assert.equal(appendToComposer(context, "hello world", null), true);
+  assert.deepEqual(composer.inserted, [" hello world"]);
+  assert.equal(composer.plainText, "existing hello world");
+});
+
+test("voice write-back skips the separator after whitespace", () => {
+  const { context } = createFakeContext();
+  const composer = createFakeComposer("existing\n");
+  context.renderer = { currentFocusedRenderable: composer, requestRender() {} };
+
+  captureComposerTarget(context, null);
+  assert.equal(appendToComposer(context, "hello", null), true);
+  assert.deepEqual(composer.inserted, ["hello"]);
+});
+
+test("voice write-back refuses a different session", () => {
+  const { context } = createFakeContext();
+  const composer = createFakeComposer("");
+  context.renderer = { currentFocusedRenderable: composer, requestRender() {} };
+
+  captureComposerTarget(context, null);
+  context.ui.router.current = () => ({ type: "session", sessionID: "ses_other" });
+
+  assert.equal(appendToComposer(context, "hello", null), false);
+  assert.deepEqual(composer.inserted, []);
+});
+
+test("voice write-back is skipped when no composer was focused", () => {
+  const { context } = createFakeContext();
+  context.renderer = { currentFocusedRenderable: null, requestRender() {} };
+
+  captureComposerTarget(context, null);
+  assert.equal(appendToComposer(context, "hello", null), false);
 });

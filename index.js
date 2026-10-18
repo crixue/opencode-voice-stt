@@ -1,8 +1,9 @@
 // opencode-voice-stt: Speech-to-text for OpenCode V2.
 //
 // STT: Record voice via sox, transcribe with whisper-cpp, normalize with
-//      an OpenAI-compatible LLM, then submit it as a prompt (or edit it in a
-//      dialog first when submitOnStop is off).
+//      an OpenAI-compatible LLM, then append it to the prompt composer (or
+//      send it right away with submitOnStop, falling back to an edit dialog
+//      when the composer cannot be identified).
 //
 // Prerequisites:
 //   STT: brew install whisper-cpp sox   (see README for Linux/Windows)
